@@ -20,9 +20,7 @@ public class PlayerController : MonoBehaviour {
     private Vector2 startPosition = new();
     private bool isWalking = false;
     private bool isFacingRight = true;
-    private int score = 0;
     private int lives = 3;
-    private int keysFound = 0;
     private int keysNumber = 3;
 
     // Start is called before the first frame update
@@ -34,9 +32,9 @@ public class PlayerController : MonoBehaviour {
         startPosition = transform.position;
 
         Debug.Log( "Game have been started" );
-        Debug.Log( $" - initial score: {score}" );
+        //Debug.Log( $" - initial score: {GameManager.GetScore()}" );
         Debug.Log( $" - initial lives: {lives}" );
-        Debug.Log( $" - initial found keys: {keysFound}" );
+        //Debug.Log( $" - initial found keys: {keysFound}" );
     }
 
     // Update is called once per frame
@@ -69,7 +67,6 @@ public class PlayerController : MonoBehaviour {
         }
 
         animator.SetBool( "isGrounded", IsGrounded() );
-        //animator.SetBool( "isGrounded", true );
         animator.SetBool( "isWalking", isWalking );
     }
 
@@ -119,8 +116,7 @@ public class PlayerController : MonoBehaviour {
 
     private void OnTriggerEnter2D( Collider2D collision ) {
         if (collision.CompareTag( "Bonus" )) {
-            score += 10;
-            Debug.Log( $"Score: {score}" );
+            GameManager.AddPoints( 10 );
 
             collision.gameObject.SetActive( false );
 
@@ -139,8 +135,7 @@ public class PlayerController : MonoBehaviour {
         if (collision.CompareTag( "Key" )) {
             collision.gameObject.SetActive( false );
 
-            keysFound += 1;
-            Debug.Log( $"Podniesione klucze: {keysFound}" );
+            GameManager.AddKey();
 
             return;
         }
@@ -156,16 +151,16 @@ public class PlayerController : MonoBehaviour {
                 return;
             }
 
-            score += 20;
             Jump( 1.25f, true );
+            GameManager.AddPoints( 20 );
             Debug.Log( "Killed an enemy!" );
 
             return;
         }
 
         if (collision.CompareTag( "Finish" )) {
-            if (keysFound == keysNumber) {
-                Debug.Log( $"Final score: {score}" );
+            if (GameManager.FoundAllKeys()) {
+                Debug.Log( $"Final score: {GameManager.GetScore()}" );
                 Debug.Log( "Level 1 finished!" );
             } else {
                 Debug.Log( "You don't have enough keys to complete level" );

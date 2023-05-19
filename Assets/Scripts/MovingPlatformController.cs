@@ -9,7 +9,7 @@ public class MovingPlatformController : MonoBehaviour {
     private bool isFacingRight = false;
 
     private void Awake() {
-        startPositionX = this.transform.position.x;
+        startPositionX = transform.position.x;
     }
 
     // Start is called before the first frame update

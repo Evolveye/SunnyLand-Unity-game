@@ -5,6 +5,11 @@ TagManager:
   serializedVersion: 2
   tags:
   - Bonus
+  - FallLevel
+  - Life
+  - MovingPlatform
+  - Enemy
+  - Key
   layers:
   - Default
   - TransparentFX
@@ -39,8 +44,11 @@ TagManager:
   - 
   - 
   m_SortingLayers:
-  - name: Background
+  - name: Landscape
     uniqueID: 3279877413
+    locked: 0
+  - name: Background
+    uniqueID: 2050399991
     locked: 0
   - name: Tilemap
     uniqueID: 1125102107
