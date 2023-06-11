@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using static UnityEditor.PlayerSettings;
 
 class PlatformData {
     public Vector3 initialPosition;
@@ -18,8 +17,8 @@ public class GeneratedPlatforms : MonoBehaviour {
     [SerializeField] private int platformsNum = 1;
     [SerializeField] public GameObject platformPrefab;
 
-    private float spawnDistance = 5f;
-    private float spawningTime = 0f;
+    //private float spawnDistance = 5f;
+    //private float spawningTime = 0f;
     private int spawnedPlatforms = 0;
     private GameObject[] platforms;
     private PlatformData[] positions;
@@ -56,6 +55,7 @@ public class GeneratedPlatforms : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
+        if (GameManager.CheckNotRunning()) return;
         if (spawnedPlatforms != platformsNum - 1) {
             float distanceBetween = Vector2.Distance( transform.position, platforms[ spawnedPlatforms ].transform.position );
 

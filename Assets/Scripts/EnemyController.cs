@@ -10,15 +10,23 @@ public class EnemyController : MonoBehaviour {
     private Animator animator;
 
     private void Awake() {
-        startPositionX = this.transform.position.x;
+        startPositionX = transform.position.x;
         animator = GetComponent<Animator>();
     }
 
-    // Start is called before the first frame update
-    void Start() {}
+    void Start() { }
+    void Update() {
+        if (GameManager.CheckNotRunning()) return;
+        if (moveRange == 0) return;
 
-    // Update is called once per frame
-    void Update() {}
+        if (isFacingRight) {
+            MoveRight();
+            if (transform.position.x - startPositionX >= moveRange) Flip();
+        } else {
+            MoveLeft();
+            if (transform.position.x <= startPositionX) Flip();
+        }
+    }
 
     private void MoveRight() {
         if (!isFacingRight) Flip();
@@ -38,20 +46,17 @@ public class EnemyController : MonoBehaviour {
 
         transform.localScale = theScale;
     }
+    public void Death() {
+        animator.SetBool( "isDead", true );
+        StartCoroutine( KillOnAnimationEnd() );
+    }
 
     IEnumerator KillOnAnimationEnd() {
-        yield return new WaitForSeconds( 0.5f );
+        if (animator.name.Contains( "Eagle" )) yield return new WaitForSeconds( 0.5f );
+
         gameObject.SetActive( false );
     }
 
     private void OnTriggerEnter2D( Collider2D collision ) {
-        if (collision.CompareTag( "Player" )) {
-            if (collision.gameObject.transform.position.y > transform.position.y) {
-                animator.SetBool( "isDead", true );
-                StartCoroutine( KillOnAnimationEnd() );
-            }
-
-            return;
-        }
     }
 }

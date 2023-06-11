@@ -1,46 +1,51 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour {
     [Header( "Movement parameters" )]
     [Range( 0.01f, 20.0f )][SerializeField] private float moveSpeed = 4.0f;
-    [Space( 10 )]
     [Range( 0.01f, 20.0f )][SerializeField] private float jumpForce = 1.0f;
+    [SerializeField] private AudioClip jumpSound;
+    [SerializeField] private AudioClip bonusSound;
+    [SerializeField] private AudioClip keySound;
+    [SerializeField] private AudioClip lifeSound;
+    [SerializeField] private AudioClip movingOnPlatformSound;
+    [SerializeField] private AudioClip deathSound;
+    [SerializeField] private AudioClip killSound;
 
     private Rigidbody2D rigidBody;
     private Animator animator;
+    private AudioSource soundSource;
 
     public LayerMask groundLayer;
 
-    const bool DEBUG = false;
-    const float rayLength = 1.5f;
+    const float rayLength = 1.0f;
     const float groundedVectorOffset = 0.3f;
 
     private Vector2 startPosition = new();
     private bool isWalking = false;
     private bool isFacingRight = true;
     private int lives = 3;
-    private int keysNumber = 3;
+    private float jumpFactor = 1f;
+    private bool hittable = true;
 
-    // Start is called before the first frame update
     void Start() { }
-
     private void Awake() {
         rigidBody = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+        soundSource = GetComponent<AudioSource>();
+
         startPosition = transform.position;
 
-        Debug.Log( "Game have been started" );
-        //Debug.Log( $" - initial score: {GameManager.GetScore()}" );
-        Debug.Log( $" - initial lives: {lives}" );
-        //Debug.Log( $" - initial found keys: {keysFound}" );
+        GameManager.SetHelth( lives );
     }
 
-    // Update is called once per frame
     void Update() {
-        if (GameManager.CheckPause()) return;
+        if (GameManager.CheckNotRunning()) return;
 
+        rigidBody.isKinematic = false;
         isWalking = false;
         float moveX = 0;
 
@@ -55,16 +60,14 @@ public class PlayerController : MonoBehaviour {
             transform.Translate( moveX * Time.deltaTime, 0.0f, 0.0f, Space.World );
         }
 
-        if (DEBUG) {
-            var leftOffset = this.transform.position;
-            leftOffset.x -= groundedVectorOffset;
+        var leftOffset = this.transform.position;
+        leftOffset.x -= groundedVectorOffset;
 
-            var rightOffset = this.transform.position;
-            rightOffset.x += groundedVectorOffset;
+        var rightOffset = this.transform.position;
+        rightOffset.x += groundedVectorOffset;
 
-            Debug.DrawRay( leftOffset, rayLength * Vector3.down, Color.white, 1, false );
-            Debug.DrawRay( rightOffset, rayLength * Vector3.down, Color.white, 1, false );
-        }
+        Debug.DrawRay( leftOffset, rayLength * Vector3.down, Color.white, 0.2f, false );
+        Debug.DrawRay( rightOffset, rayLength * Vector3.down, Color.white, 0.2f, false );
 
         animator.SetBool( "isGrounded", IsGrounded() );
         animator.SetBool( "isWalking", isWalking );
@@ -81,17 +84,21 @@ public class PlayerController : MonoBehaviour {
             || Physics2D.Raycast( rightOffset, Vector2.down, rayLength, groundLayer.value );
     }
 
-    private void Jump( bool force = false ) => Jump( 1, force );
-    private void Jump( float multiplier, bool force = false ) {
-        if (!IsGrounded() && !force) return;
+    public void Jump( bool force = false ) => Jump( 1, force );
+    public void Jump( float multiplier, bool force = false ) {
+        if (!IsGrounded() && !force && !GameManager.CheckCheatmode()) return;
 
         if (force) {
             Vector3 v = rigidBody.velocity;
             v.y = 0;
             rigidBody.velocity = v;
+        } else {
+            //Debug.Log( $"v.y={rigidBody.velocity.y}" );
+            //if (rigidBody.velocity.y != 0) return;
+            if (jumpSound != null) soundSource.PlayOneShot( jumpSound, AudioListener.volume );
         }
 
-        rigidBody.AddForce( Vector2.up * jumpForce * multiplier, ForceMode2D.Impulse );
+        rigidBody.AddForce( Vector2.up * jumpForce * multiplier * jumpFactor, ForceMode2D.Impulse );
     }
 
     private void Flip() {
@@ -104,18 +111,38 @@ public class PlayerController : MonoBehaviour {
     }
 
     private void Death() {
-        lives -= 1;
+        if (!hittable) return;
+        if (deathSound != null) soundSource.PlayOneShot( deathSound, AudioListener.volume );
+
+        GameManager.AddHealth( -1 );
+        lives += -1;
+
+        hittable = false;
+
+        Task.Run( async () => {
+            await Task.Delay( 1000 );
+            hittable = true;
+        } );
 
         if (lives == 0) {
             Debug.Log( "Killed by enemy! Game over" );
+            GameManager.FinishGame();
         } else {
-            Debug.Log( $"Killed by enemy! Current lives count is {lives}" );
             transform.position = startPosition;
         }
     }
 
     private void OnTriggerEnter2D( Collider2D collision ) {
+        if (!collision.gameObject.activeInHierarchy) return;
+
+        if (collision.CompareTag( "BigJump" )) {
+            jumpFactor = 1.5f;
+            return;
+        }
+
         if (collision.CompareTag( "Bonus" )) {
+            if (bonusSound != null) soundSource.PlayOneShot( bonusSound, AudioListener.volume );
+
             GameManager.AddPoints( 10 );
 
             collision.gameObject.SetActive( false );
@@ -124,8 +151,9 @@ public class PlayerController : MonoBehaviour {
         }
 
         if (collision.CompareTag( "Life" )) {
+            if (lifeSound != null) soundSource.PlayOneShot( lifeSound, AudioListener.volume );
+            GameManager.AddHealth( 1 );
             lives += 1;
-            Debug.Log( $"Life picked up. Actual lives count: {lives}" );
 
             collision.gameObject.SetActive( false );
 
@@ -133,6 +161,7 @@ public class PlayerController : MonoBehaviour {
         }
 
         if (collision.CompareTag( "Key" )) {
+            if (keySound!= null) soundSource.PlayOneShot( keySound, AudioListener.volume );
             collision.gameObject.SetActive( false );
 
             GameManager.AddKey();
@@ -146,22 +175,31 @@ public class PlayerController : MonoBehaviour {
         }
 
         if (collision.CompareTag( "Enemy" )) {
-            if (collision.gameObject.transform.position.y > transform.position.y) {
+            var enemy = collision.GetComponent<EnemyController>();
+
+            if (enemy == null) return;
+            if (rigidBody.velocity.y >= 0 || collision.gameObject.transform.position.y > transform.position.y - 0.5) {
                 Death();
                 return;
             }
 
-            Jump( 1.25f, true );
+            if (killSound != null) soundSource.PlayOneShot( killSound, AudioListener.volume );
+            enemy.Death();
+
             GameManager.AddPoints( 20 );
-            Debug.Log( "Killed an enemy!" );
+            GameManager.AddKilledEnemies( 1 );
+            Jump( 1.25f, true );
 
             return;
         }
 
         if (collision.CompareTag( "Finish" )) {
             if (GameManager.FoundAllKeys()) {
+                for (int i = 0; i < lives; i++) GameManager.AddPoints( 150 );
+
                 Debug.Log( $"Final score: {GameManager.GetScore()}" );
                 Debug.Log( "Level 1 finished!" );
+                GameManager.CompleteLevel();
             } else {
                 Debug.Log( "You don't have enough keys to complete level" );
             }
@@ -178,6 +216,11 @@ public class PlayerController : MonoBehaviour {
     private void OnTriggerExit2D( Collider2D collision ) {
         if (collision.CompareTag( "MovingPlatform" )) {
             transform.SetParent( null );
+            return;
+        }
+
+        if (collision.CompareTag( "BigJump" )) {
+            jumpFactor = 1;
             return;
         }
     }

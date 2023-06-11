@@ -10,6 +10,7 @@ TagManager:
   - MovingPlatform
   - Enemy
   - Key
+  - BigJump
   layers:
   - Default
   - TransparentFX

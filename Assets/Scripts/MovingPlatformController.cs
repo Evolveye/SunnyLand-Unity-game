@@ -3,34 +3,51 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class MovingPlatformController : MonoBehaviour {
-    public float moveRange = 10.0f;
+    public int requiredKeys = 0;
+    public float moveRangeX = 0f;
+    public float moveRangeY = 0f;
     public float moveSpeed = 1.5f;
-    private float startPositionX = 0.0f;
-    private bool isFacingRight = false;
+    private Vector3[] waypoints = new Vector3[ 2 ];
+    private int currentWaypoint = 0;
+
+    private AudioSource soundSource;
 
     private void Awake() {
-        startPositionX = transform.position.x;
+        soundSource = GetComponent<AudioSource>();
+
+        waypoints[ 0 ] = transform.position;
+        waypoints[ 1 ] = new Vector3( transform.position.x + moveRangeX, transform.position.y + moveRangeY, 0 );
     }
 
-    // Start is called before the first frame update
     void Start() { }
 
-    // Update is called once per frame
     void Update() {
-        if (isFacingRight) {
-            MoveRight();
-            if (transform.position.x >= moveRange) isFacingRight = !isFacingRight;
-        } else {
-            MoveLeft();
-            if (transform.position.x <= startPositionX) isFacingRight = !isFacingRight;
+        if (GameManager.CheckNotRunning()) return;
+
+        float distance = Vector2.Distance( transform.position, waypoints[ currentWaypoint ] );
+
+        if (distance < 0.1f) {
+            int moduloVal = waypoints.Length;
+            int foundKeys = GameManager.GetFoundKeysCount();
+
+            if (requiredKeys > foundKeys) return;
+
+            currentWaypoint = (currentWaypoint + 1) % moduloVal;
+        }
+
+        Vector2 newPosition = Vector2.MoveTowards( transform.position, waypoints[ currentWaypoint ], moveSpeed * Time.deltaTime );
+        transform.position = newPosition;
+    }
+
+    private void OnTriggerEnter2D( Collider2D collision ) {
+        if (collision.CompareTag( "Player" )) {
+            soundSource.Play();
         }
     }
 
-    private void MoveRight() {
-        transform.Translate( moveSpeed * Time.deltaTime, 0.0f, 0.0f, Space.World );
-    }
-
-    private void MoveLeft() {
-        transform.Translate( -moveSpeed * Time.deltaTime, 0.0f, 0.0f, Space.World );
+    private void OnTriggerExit2D( Collider2D collision ) {
+        if (collision.CompareTag( "Player" )) {
+            soundSource.Stop();
+        }
     }
 }
